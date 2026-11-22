@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AgriScan AI – Crop Disease Identification</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;800&family=Manrope:wght@400;500;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#06141b;--bg2:#0b212b;--card:rgba(20,52,64,.55);--line:rgba(110,231,235,.22);--tx:#e6f6f7;--mut:#8fb2b8;--cy:#5ce1e6;--gr:#8cf0a0;--am:#ffb454;--rd:#ff6b8a;--btn:#06141b;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#eef7f6;--bg2:#dcefee;--card:rgba(255,255,255,.75);--line:rgba(8,110,120,.28);--tx:#0a2a30;--mut:#476a70;--cy:#0a8f99;--gr:#1d8a42;--am:#b86a00;--rd:#c8294f;--btn:#fff;color-scheme:light}}
+:root[data-theme="light"]{--bg:#eef7f6;--bg2:#dcefee;--card:rgba(255,255,255,.75);--line:rgba(8,110,120,.28);--tx:#0a2a30;--mut:#476a70;--cy:#0a8f99;--gr:#1d8a42;--am:#b86a00;--rd:#c8294f;--btn:#fff;color-scheme:light}
+:root[data-theme="dark"]{--bg:#06141b;--bg2:#0b212b;--card:rgba(20,52,64,.55);--line:rgba(110,231,235,.22);--tx:#e6f6f7;--mut:#8fb2b8;--cy:#5ce1e6;--gr:#8cf0a0;--am:#ffb454;--rd:#ff6b8a;--btn:#06141b;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:radial-gradient(1200px 600px at 80% -10%,var(--bg2),var(--bg));background-color:var(--bg);color:var(--tx);font:500 15px/1.55 Manrope,system-ui,sans-serif;min-height:100vh}
+h1,h2,h3{font-family:Sora,system-ui,sans-serif;margin:0;letter-spacing:-.02em}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--cy);outline-offset:2px}
+.wrap{max-width:1080px;margin:0 auto;padding:16px}
+header{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;padding:8px 0 16px}
+.logo{display:flex;align-items:center;gap:10px;font:800 20px Sora,sans-serif}
+.logo i{width:34px;height:34px;border-radius:10px;background:conic-gradient(from 200deg,var(--cy),var(--gr),var(--cy));display:grid;place-items:center;color:var(--btn);font-style:normal}
+nav{display:flex;gap:6px;flex-wrap:wrap}
+nav button,.chip,.ghost{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:8px 16px;backdrop-filter:blur(8px)}
+nav button[aria-current="true"],.chip.on{background:var(--cy);color:var(--btn);border-color:var(--cy);font-weight:700}
+.ghost:hover,nav button:hover,.chip:hover{border-color:var(--cy)}
+.hero{padding:28px 0 8px}
+.hero h1{font-size:clamp(30px,6vw,54px);line-height:1.05;font-weight:800;max-width:14ch}
+.hero p{color:var(--mut);max-width:52ch;margin:14px 0 0}
+.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px;margin-top:20px}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px;backdrop-filter:blur(10px)}
+.stage{position:relative;aspect-ratio:4/3;border-radius:16px;overflow:hidden;border:1px dashed var(--line);display:grid;place-items:center;text-align:center;background:rgba(0,0,0,.18)}
+.stage.drag{border-color:var(--cy);background:rgba(92,225,230,.12)}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.stage .hint{padding:20px;color:var(--mut)}
+.stage .hint b{display:block;color:var(--tx);font:700 18px Sora,sans-serif;margin-bottom:6px}
+.scan{position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--cy),transparent);box-shadow:0 0 24px 6px var(--cy);top:0;display:none}
+.stage.busy .scan{display:block;animation:sw 1.4s ease-in-out infinite alternate}
+@keyframes sw{to{top:calc(100% - 3px)}}
+.corner{position:absolute;width:22px;height:22px;border:2px solid var(--cy);pointer-events:none}
+.c1{top:8px;left:8px;border-right:0;border-bottom:0}.c2{top:8px;right:8px;border-left:0;border-bottom:0}.c3{bottom:8px;left:8px;border-right:0;border-top:0}.c4{bottom:8px;right:8px;border-left:0;border-top:0}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn{background:var(--cy);color:var(--btn);border:0;border-radius:12px;padding:11px 18px;font-weight:800}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn:hover:not(:disabled){filter:brightness(1.1)}
+.lbl{color:var(--mut);font-size:13px;margin:14px 0 6px}
+.samples{display:flex;gap:6px;flex-wrap:wrap}
+.res h2{font-size:24px}
+.ring{--p:0;width:96px;height:96px;border-radius:50%;background:conic-gradient(var(--c,var(--cy)) calc(var(--p)*1%),rgba(127,127,127,.2) 0);display:grid;place-items:center;flex:none;transition:.6s}
+.ring span{background:var(--bg);width:78px;height:78px;border-radius:50%;display:grid;place-items:center;font:800 20px Sora,sans-serif}
+.top{display:flex;gap:16px;align-items:center}
+.bar{height:8px;border-radius:8px;background:rgba(127,127,127,.2);overflow:hidden;margin:4px 0 10px}
+.bar i{display:block;height:100%;background:var(--cy);border-radius:8px;transition:width .6s}
+.cand{width:100%;text-align:left;background:none;border:0;padding:0;display:block}
+.cand span{display:flex;justify-content:space-between;font-size:14px}
+.tag{display:inline-block;font-size:12px;padding:2px 10px;border-radius:99px;border:1px solid var(--line);color:var(--mut)}
+.sev-High{color:var(--rd);border-color:var(--rd)}.sev-Medium{color:var(--am);border-color:var(--am)}.sev-None{color:var(--gr);border-color:var(--gr)}
+.meters{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.meters div{background:rgba(127,127,127,.12);border-radius:12px;padding:8px;font-size:12px;color:var(--mut)}
+.meters b{display:block;font:700 16px Sora,sans-serif;color:var(--tx)}
+ul.adv{padding-left:18px;margin:6px 0}ul.adv li{margin:4px 0}
+.src{font-size:12px;color:var(--mut);border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
+.lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:14px}
+.lib button{text-align:left;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;transition:.2s}
+.lib button:hover{border-color:var(--cy);transform:translateY(-2px)}
+.lib canvas{width:100%;aspect-ratio:3/2;border-radius:10px;margin-bottom:8px;background:#8a8f94}
+input[type=search]{width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 14px;color:var(--tx);font:inherit;margin-top:14px}
+dialog{background:var(--bg2);color:var(--tx);border:1px solid var(--cy);border-radius:22px;max-width:560px;width:calc(100% - 28px);padding:20px}
+dialog::backdrop{background:rgba(0,0,0,.6);backdrop-filter:blur(4px)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,40px);background:var(--cy);color:var(--btn);padding:10px 18px;border-radius:99px;font-weight:700;opacity:0;transition:.3s;pointer-events:none}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.hist{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px;margin-top:10px}
+.hist img{width:64px;height:48px;border-radius:8px;object-fit:cover}
+.hist:hover{border-color:var(--cy)}
+.hide{display:none!important}
+footer{color:var(--mut);font-size:12px;padding:24px 0}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+#ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;transition:opacity .3s}#ov.off{opacity:0}
+.sevbar{display:flex;gap:4px;margin:8px 0 4px}.sevbar i{flex:1;height:8px;border-radius:6px;background:rgba(127,127,127,.25)}.sevbar i.on{background:var(--c)}
+.spark{width:100%;height:70px;margin-top:12px}.trans{background:rgba(127,127,127,.12);border-radius:12px;padding:10px;margin-top:10px;font-size:14px;white-space:pre-wrap}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-top:8px}.legend b{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px}
+/* ===== FUTURISTIC THEME ===== */
+@property --a{syntax:'<angle>';initial-value:0deg;inherits:false}
+body{position:relative;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:-50%;z-index:0;pointer-events:none;background:radial-gradient(40% 35% at 25% 30%,color-mix(in srgb,var(--cy) 22%,transparent),transparent 70%),radial-gradient(35% 30% at 75% 20%,color-mix(in srgb,var(--gr) 18%,transparent),transparent 70%),radial-gradient(40% 35% at 60% 80%,color-mix(in srgb,#8a5cff 20%,transparent),transparent 70%);animation:aur 22s ease-in-out infinite alternate;filter:blur(30px)}
+body::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(color-mix(in srgb,var(--cy) 9%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--cy) 9%,transparent) 1px,transparent 1px);background-size:44px 44px;-webkit-mask-image:radial-gradient(ellipse at 50% 30%,#000 10%,transparent 75%);mask-image:radial-gradient(ellipse at 50% 30%,#000 10%,transparent 75%);animation:grid 6s linear infinite}
+@keyframes aur{to{transform:translate(6%,4%) rotate(14deg) scale(1.15)}}
+@keyframes grid{to{background-position:0 44px,44px 0}}
+#fx{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.wrap{position:relative;z-index:1}
+.logo i{box-shadow:0 0 18px var(--cy),0 0 40px color-mix(in srgb,var(--cy) 50%,transparent);animation:pulse 3s ease-in-out infinite}
+.logo{text-shadow:0 0 18px color-mix(in srgb,var(--cy) 60%,transparent)}
+@keyframes pulse{50%{box-shadow:0 0 28px var(--gr),0 0 60px color-mix(in srgb,var(--gr) 55%,transparent);transform:rotate(8deg) scale(1.06)}}
+.hero h1{background:linear-gradient(100deg,var(--tx) 0%,var(--cy) 30%,var(--gr) 55%,var(--tx) 80%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shim 7s linear infinite}
+@keyframes shim{to{background-position:-250% 0}}
+.card{position:relative;overflow:hidden;box-shadow:0 20px 60px -25px color-mix(in srgb,var(--cy) 55%,transparent),inset 0 1px 0 rgba(255,255,255,.08);border-color:transparent}
+.card::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.5px;background:conic-gradient(from var(--a),transparent 0 62%,var(--cy) 80%,var(--gr) 90%,transparent);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:spin 7s linear infinite;pointer-events:none}
+.card::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(320px circle at var(--mx,70%) var(--my,-30%),color-mix(in srgb,var(--cy) 16%,transparent),transparent 65%)}
+@keyframes spin{to{--a:360deg}}
+nav button,.chip,.ghost{transition:.25s}
+nav button:hover,.chip:hover,.ghost:hover{box-shadow:0 0 16px color-mix(in srgb,var(--cy) 45%,transparent);transform:translateY(-1px)}
+nav button[aria-current="true"],.chip.on{background:linear-gradient(135deg,var(--cy),var(--gr));box-shadow:0 0 20px color-mix(in srgb,var(--cy) 60%,transparent)}
+.btn{position:relative;overflow:hidden;background:linear-gradient(135deg,var(--cy),var(--gr));box-shadow:0 6px 24px -6px color-mix(in srgb,var(--cy) 70%,transparent);transition:.25s}
+.btn::after{content:"";position:absolute;top:0;left:-80%;width:50%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-20deg);animation:shine 3.2s ease-in-out infinite}
+.btn:disabled::after{display:none}
+.btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 34px -4px color-mix(in srgb,var(--cy) 85%,transparent)}
+@keyframes shine{0%,55%{left:-80%}100%{left:130%}}
+.stage{background-image:linear-gradient(color-mix(in srgb,var(--cy) 10%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--cy) 10%,transparent) 1px,transparent 1px);background-size:24px 24px;box-shadow:inset 0 0 40px color-mix(in srgb,var(--cy) 14%,transparent)}
+.stage:has(.hint:not(.hide))::before{content:"";position:absolute;inset:-40%;background:conic-gradient(from 0deg,transparent 0 80%,color-mix(in srgb,var(--cy) 35%,transparent) 98%,transparent);animation:rad 4s linear infinite;pointer-events:none}
+@keyframes rad{to{transform:rotate(360deg)}}
+.corner{animation:blink 2s ease-in-out infinite;filter:drop-shadow(0 0 6px var(--cy))}
+@keyframes blink{50%{opacity:.4}}
+.ring{filter:drop-shadow(0 0 12px var(--c,var(--cy)));animation:glow 2.6s ease-in-out infinite}
+@keyframes glow{50%{filter:drop-shadow(0 0 22px var(--c,var(--cy)))}}
+.bar i{background:linear-gradient(90deg,var(--cy),var(--gr),var(--cy));background-size:200% 100%;animation:shim 3s linear infinite}
+.lib button{position:relative;overflow:hidden}
+.lib button:hover{box-shadow:0 12px 40px -12px color-mix(in srgb,var(--cy) 70%,transparent);transform:translateY(-4px) scale(1.02)}
+.lib button::after{content:"";position:absolute;top:0;left:-90%;width:45%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.22),transparent);transform:skewX(-20deg);transition:left .7s}
+.lib button:hover::after{left:140%}
+.tag{box-shadow:0 0 10px color-mix(in srgb,currentColor 25%,transparent)}
+.toast{box-shadow:0 0 30px color-mix(in srgb,var(--cy) 70%,transparent)}
+dialog{box-shadow:0 0 60px color-mix(in srgb,var(--cy) 35%,transparent)}
+#t-scan,#t-lib,#t-hist,#t-about{animation:rise .6s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}}
+/* ===== HUD UPGRADE ===== */
+h1,h2,.logo,.ring span,.meters b{font-family:Orbitron,Sora,sans-serif}
+.logo{letter-spacing:.06em;font-size:18px}
+.hero h1{font-weight:900;font-size:clamp(26px,5.2vw,46px);letter-spacing:.015em;max-width:20ch;filter:drop-shadow(0 0 18px color-mix(in srgb,var(--cy) 35%,transparent))}
+.res h2,h2{letter-spacing:.08em;text-transform:uppercase;font-size:20px}
+nav button,.btn,.ghost,.chip{letter-spacing:.05em;font-size:12.5px}
+nav button,.btn{text-transform:uppercase;font-family:Orbitron,Manrope,sans-serif;font-weight:700;font-size:11px;letter-spacing:.1em}
+.lbl{text-transform:uppercase;letter-spacing:.14em;font-size:11px;color:var(--cy);opacity:.85}
+header{position:relative}
+header::after{content:'';position:absolute;left:0;right:0;bottom:6px;height:1px;background:linear-gradient(90deg,transparent,var(--cy),var(--gr),transparent);background-size:200% 100%;animation:shim 5s linear infinite}
+.hud{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:6px 0 4px}
+.hud>div{position:relative;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--cy);border-radius:14px;padding:10px 14px;backdrop-filter:blur(10px);transform:perspective(600px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .2s,box-shadow .3s;box-shadow:0 8px 30px -14px color-mix(in srgb,var(--cy) 60%,transparent)}
+.hud>div:hover{box-shadow:0 0 24px color-mix(in srgb,var(--cy) 45%,transparent)}
+.hud small{display:block;font:600 10px Orbitron,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:var(--mut)}
+.hud b{display:flex;align-items:center;gap:8px;font:700 17px Orbitron,sans-serif;color:var(--tx);margin-top:2px;text-shadow:0 0 14px color-mix(in srgb,var(--cy) 55%,transparent)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--gr);box-shadow:0 0 10px var(--gr),0 0 22px var(--gr);animation:blink 1.4s ease-in-out infinite}
+.lib button{transform:perspective(700px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg))}
+.lib button:hover{transform:perspective(700px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateY(-4px) scale(1.02)}
+.stage.busy{border-color:var(--cy);box-shadow:0 0 40px color-mix(in srgb,var(--cy) 50%,transparent),inset 0 0 60px color-mix(in srgb,var(--cy) 22%,transparent)}
+.stage.busy::after{content:'ANALYSING LEAF  ·  SPECTRAL SCAN';position:absolute;left:14px;bottom:12px;font:700 11px Orbitron,sans-serif;letter-spacing:.22em;color:var(--cy);text-shadow:0 0 12px var(--cy);animation:blink 1s ease-in-out infinite}
+.stage.busy canvas#cv{filter:saturate(1.3) contrast(1.1) drop-shadow(0 0 12px var(--cy))}
+.scan{height:4px;box-shadow:0 0 30px 8px var(--cy),0 0 80px 20px color-mix(in srgb,var(--cy) 40%,transparent)}
+.ring{position:relative}
+.ring::after{content:'';position:absolute;inset:-7px;border-radius:50%;background:repeating-conic-gradient(var(--c,var(--cy)) 0 1.2deg,transparent 1.2deg 9deg);-webkit-mask:radial-gradient(closest-side,transparent 88%,#000 90%);mask:radial-gradient(closest-side,transparent 88%,#000 90%);opacity:.55;animation:rad 20s linear infinite;pointer-events:none}
+.ring span{font-size:19px;text-shadow:0 0 14px var(--c,var(--cy))}
+#res>*{animation:rise .55s cubic-bezier(.2,.8,.2,1) both}
+#res>*:nth-child(2){animation-delay:.07s}#res>*:nth-child(3){animation-delay:.14s}#res>*:nth-child(4){animation-delay:.21s}#res>*:nth-child(5){animation-delay:.28s}#res>*:nth-child(6){animation-delay:.35s}#res>*:nth-child(n+7){animation-delay:.42s}
+.meters div{border:1px solid var(--line);border-top:2px solid var(--cy);background:color-mix(in srgb,var(--cy) 7%,transparent);transition:.25s}
+.meters div:hover{background:color-mix(in srgb,var(--cy) 16%,transparent);transform:translateY(-2px)}
+.meters b{text-shadow:0 0 12px color-mix(in srgb,var(--cy) 55%,transparent)}
+::-webkit-scrollbar{width:9px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:linear-gradient(var(--cy),var(--gr));border-radius:9px}
+::selection{background:var(--cy);color:var(--btn)}
+input[type=search]:focus,textarea:focus{border-color:var(--cy);box-shadow:0 0 18px color-mix(in srgb,var(--cy) 45%,transparent);outline:none}
+footer{text-align:center;letter-spacing:.12em;text-transform:uppercase;font-size:10px}
+</style>
+</head>
+<body>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div class="wrap">
+<header>
+ <div class="logo"><i>✦</i>AgriScan AI</div>
+ <nav id="nav">
+  <button data-tab="scan" aria-current="true">Scan leaf</button>
+  <button data-tab="lib" aria-current="false">Disease library</button>
+  <button data-tab="hist" aria-current="false">History</button>
+  <button data-tab="about" aria-current="false">How it works</button>
+  <button id="theme" aria-label="Toggle theme">◐</button>
+ </nav>
+</header>
+<div class="hud" aria-label="System status">
+ <div><small>System</small><b><i class="dot"></i>Online</b></div>
+ <div><small>Local time</small><b id="hClk">--:--:--</b></div>
+ <div><small>Saved scans</small><b id="hScans">0</b></div>
+ <div><small>Diseases indexed</small><b id="hLib">0</b></div>
+ <div><small>Engine</small><b id="hEng" style="font-size:13px">Colour AI</b></div>
+</div>
+
+<section id="t-scan">
+ <div class="hero"><h1>See the disease before it spreads.</h1><p>Photograph a leaf. AgriScan reads colour and lesion patterns, ranks the likely diseases and gives basic advice for your crop.</p></div>
+ <div class="grid">
+  <div class="card">
+   <div class="stage" id="stage"><canvas id="cv" width="640" height="480"></canvas><canvas id="ov" width="640" height="480"></canvas>
+    <div class="hint" id="hint"><b>Drop a leaf photo here</b>or use the buttons below. A plain background gives the best reading.</div>
+    <i class="corner c1"></i><i class="corner c2"></i><i class="corner c3"></i><i class="corner c4"></i><div class="scan"></div></div>
+   <div class="row">
+    <button class="btn" id="upBtn">Upload photo</button>
+    <button class="ghost" id="camBtn">Use camera</button>
+    <button class="btn" id="anBtn" disabled>Analyse leaf</button>
+    <button class="ghost" id="clrBtn">Clear</button>
+   </div>
+   <input type="file" id="file" accept="image/*" hidden><input type="file" id="cam" accept="image/*" capture="environment" hidden>
+   <div class="lbl">No photo handy? Try a sample leaf</div>
+   <div class="samples" id="samples"></div><select id="moreS" aria-label="More sample leaves" class="ghost" style="margin-top:8px;color:var(--tx)"><option value="">More sample diseases…</option></select>
+   <div class="lbl">Which crop is it? (optional, helps accuracy)</div><div class="samples" id="crops"></div>
+   <div class="lbl">Optional: tick what you can see to sharpen the result</div>
+   <div class="samples" id="sym"></div><div class="lbl">Recent weather in your field (shifts the odds toward likely diseases)</div><div class="samples" id="wx"></div>
+  </div>
+  <div class="card res" id="res"><h2>Results</h2><p style="color:var(--mut)">Load a leaf and press <b>Analyse leaf</b>. Your ranked diagnosis and advice appear here.</p></div>
+ </div>
+</section>
+
+<section id="t-lib" class="hide">
+ <div class="hero"><h1>Disease library</h1><p>Tap any card for symptoms, causes and advice.</p></div>
+ <input type="search" id="q" placeholder="Search by name or symptom, e.g. orange, white powder, spots">
+ <div class="samples" id="sevF" style="margin-top:12px"></div>
+ <div class="lib" id="libGrid"></div>
+</section>
+
+<section id="t-hist" class="hide">
+ <div class="hero"><h1>Scan history</h1><p>Saved on this device only.</p></div>
+ <div id="histList"></div>
+ <div class="row"><button class="ghost" id="clrHist">Clear history</button><button class="ghost" id="csvH">Export CSV</button></div>
+</section>
+
+<section id="t-about" class="hide">
+ <div class="hero"><h1>How it works</h1></div>
+ <div class="card" style="margin-top:16px">
+  <h3>1. Read the leaf</h3><p>The photo is shrunk and scanned pixel by pixel in your browser. Nothing is uploaded. Colours are sorted into healthy green, yellowing, brown, dark, white and orange, and lesion spots are counted.</p>
+  <h3>2. Match to known patterns</h3><p>Those measurements are compared with the typical look of each disease in the built-in library. Symptoms you tick add extra weight.</p>
+  <h3>3. Advise from an approved source</h3><p>Advice is a short summary of general extension guidance (ICAR, FAO and state agricultural university advisories). It is not a prescription.</p>
+  <h3>Limits</h3><p>This is a colour and pattern screening tool, not a laboratory test. Always confirm with your nearest Krishi Vigyan Kendra or agriculture officer before spraying.</p>
+ </div>
+</section>
+<footer>AgriScan AI · Screening aid for early detection. Confirm with a local agriculture expert.</footer>
+</div>
+
+<dialog id="dlg"><div id="dlgBody"></div><div class="row"><button class="btn" id="dlgClose">Close</button></div></dialog>
+<dialog id="camDlg"><h2>Take a leaf photo</h2><video id="vid" playsinline muted style="width:100%;border-radius:14px;margin-top:12px;background:#000"></video><div class="row"><button class="btn" id="snapB">Capture</button><button class="ghost" id="camX">Cancel</button></div></dialog>
+<dialog id="shDlg"><h2>Share report</h2><textarea id="shTxt" readonly rows="9" style="width:100%;margin-top:12px;background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:12px;padding:10px;font:inherit"></textarea><div class="row"><button class="btn" id="shCopy">Copy</button><a class="ghost" id="shWa" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">WhatsApp</a><a class="ghost" id="shMail" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">Email</a><a class="ghost" id="shSms" style="text-decoration:none;color:inherit">SMS</a><button class="ghost" id="shDev">Device share</button><button class="ghost" id="shX">Close</button></div></dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+const SRC="General extension guidance summarised from ICAR, FAO and state agricultural university advisories. Confirm with a local agriculture officer.";
+const D={
+healthy:{n:"Healthy leaf",sev:"None",p:{y:0,b:0,d:0,w:0,o:0,s:0},sym:[],about:"No significant disease colouring detected.",adv:["Keep up regular scouting every 5–7 days.","Water at the base, not on leaves.","Maintain balanced nutrition and clean field edges."]},
+early:{n:"Early blight",sev:"Medium",p:{y:.1,b:.13,d:.03,w:0,o:0,s:6},sym:["Brown rings","Yellow halo"],about:"Fungal disease causing brown spots with target-like rings, usually on older leaves first. Common on tomato and potato.",adv:["Remove and destroy badly affected lower leaves.","Rotate with non-host crops for 2–3 seasons.","Avoid overhead irrigation; keep leaves dry.","If spread continues, use a fungicide recommended by your local agriculture office."]},
+late:{n:"Late blight",sev:"High",p:{y:.04,b:.1,d:.16,w:.03,o:0,s:2},sym:["Dark water-soaked patches","White mould underneath"],about:"Fast-moving disease that creates large dark, greasy-looking blotches, especially in cool, humid weather.",adv:["Act quickly: remove and bag infected plants away from the field.","Improve airflow and avoid evening watering.","Do not compost infected material.","Contact your agriculture officer urgently for a recommended spray schedule."]},
+powdery:{n:"Powdery mildew",sev:"Medium",p:{y:.06,b:.01,d:0,w:.26,o:0,s:3},sym:["White powdery coating"],about:"Fungus that leaves a white, flour-like layer on leaf surfaces. Thrives in warm days and cool, dry nights.",adv:["Prune crowded growth to improve airflow.","Remove heavily coated leaves.","Avoid excess nitrogen fertiliser.","Use a sulphur-based or locally approved fungicide if needed, following label directions."]},
+rust:{n:"Leaf rust",sev:"Medium",p:{y:.06,b:.04,d:0,w:0,o:.13,s:14},sym:["Orange pustules","Rust-coloured dust"],about:"Small orange to rust-coloured pustules, often with yellowing around them. Spreads by airborne spores.",adv:["Remove infected leaves and fallen debris.","Choose resistant varieties next season.","Avoid dense planting and wet foliage.","Ask your local extension office about suitable fungicides and timing."]},
+bact:{n:"Bacterial leaf spot",sev:"Medium",p:{y:.09,b:.04,d:.06,w:0,o:0,s:16},sym:["Many small dark spots","Yellow halo"],about:"Many small, dark, angular spots often ringed in yellow. Spread by splashing water and contaminated tools.",adv:["Use disease-free seed and transplants.","Avoid working in wet fields; clean tools.","Rotate crops and remove infected residue.","Copper-based products are commonly advised; check local recommendations."]},
+mosaic:{n:"Mosaic virus",sev:"Medium",p:{y:.36,b:.01,d:0,w:0,o:0,s:0},sym:["Mottled yellow-green pattern","Curled or stunted leaves"],about:"Mottled or widespread yellowing. Can be a virus spread by insects, or a nutrient problem such as nitrogen or iron deficiency.",adv:["Control aphids and whiteflies; remove weeds that host them.","Uproot and destroy plants with clear mosaic and stunting.","If yellowing starts on old leaves, check soil nutrition with a soil test.","Confirm the cause with a local expert before treating."]},
+septoria:{n:"Septoria leaf spot",sev:"Medium",p:{y:.05,b:.05,d:.04,w:.01,o:0,s:20},sym:["Many small round spots","Pale grey centre, dark edge"],about:"Fungal disease with numerous small circular spots that have light centres and dark borders. Common on tomato and wheat.",adv:["Remove infected lower leaves and crop debris.","Mulch and water at the base to limit splash.","Rotate crops and keep plants spaced for airflow.","Ask your extension office about suitable fungicides."]},
+downy:{n:"Downy mildew",sev:"High",p:{y:.2,b:.03,d:.02,w:.03,o:0,s:6},sym:["Angular yellow patches","Grey-purple fuzz underneath"],about:"Yellow patches on the upper leaf with fuzzy grey or purple growth underneath in damp weather. Affects grape, cucurbits, onion and millets.",adv:["Remove affected leaves and improve air movement.","Avoid overhead watering and late-evening irrigation.","Use resistant varieties where available.","Seek local fungicide advice early; it spreads fast in humid weather."]},
+anthracnose:{n:"Anthracnose",sev:"Medium",p:{y:.03,b:.08,d:.1,w:0,o:0,s:5},sym:["Sunken dark lesions","Irregular tan to black patches"],about:"Fungal disease causing dark, sunken, irregular lesions on leaves and fruit. Common on mango, chilli, beans and grape.",adv:["Prune and destroy infected twigs and leaves.","Use clean seed and avoid working in wet crops.","Keep fields free of old plant debris.","Follow local recommendations for fungicide timing."]},
+blast:{n:"Rice blast",sev:"High",p:{y:.03,b:.08,d:.02,w:.04,o:0,s:8},sym:["Diamond-shaped spots","Grey centre, brown margin"],about:"Diamond or spindle-shaped lesions with grey centres and brown edges on rice leaves. Worsens with heavy nitrogen and humid, cloudy weather.",adv:["Avoid excess nitrogen fertiliser.","Use resistant varieties and treated seed.","Drain and manage water to reduce humidity in the canopy.","Contact your agriculture officer quickly; blast can spread to panicles."]},
+cercospora:{n:"Cercospora leaf spot",sev:"Medium",p:{y:.07,b:.09,d:.01,w:.03,o:0,s:12},sym:["Tan or grey spots","Reddish-brown border"],about:"Round to oval spots with tan or grey centres and reddish-brown margins. Seen on maize, groundnut, beet and chilli.",adv:["Rotate crops and remove residue after harvest.","Plant resistant varieties.","Avoid dense planting.","Use locally approved fungicides if disease is spreading."]},
+scab:{n:"Scab",sev:"Medium",p:{y:.03,b:.05,d:.08,w:0,o:0,s:8},sym:["Olive-black velvety spots","Rough or cracked patches"],about:"Olive-green to black, velvety or scabby spots on leaves and fruit. Typical of apple and pear in cool, wet weather.",adv:["Rake and remove fallen leaves.","Prune for open canopy and quicker drying.","Plant tolerant varieties.","Check local spray calendars with your horticulture office."]},
+blackrot:{n:"Black rot",sev:"High",p:{y:.03,b:.12,d:.05,w:0,o:0,s:9},sym:["Brown circular lesions","Tiny black dots inside"],about:"Brown circular lesions with tiny black dots, mainly on grape and apple. Fruit can shrivel and turn black.",adv:["Remove mummified fruit and infected shoots.","Keep the canopy open and dry.","Start protection early in the season.","Confirm treatment with your local horticulture office."]},
+scorch:{n:"Leaf scorch (heat, drought or salt)",sev:"Medium",p:{y:.08,b:.2,d:0,w:0,o:0,s:1},sym:["Dry brown edges","Crispy leaf tips"],about:"Brown, dry leaf edges and tips, often from heat, water stress, wind or salty water rather than infection.",adv:["Check irrigation and soil moisture.","Mulch to cool roots and hold water.","Test irrigation water or soil for salts if it keeps happening.","If it spreads in patches, ask an expert to rule out disease."]},
+curl:{n:"Leaf curl virus",sev:"High",p:{y:.22,b:.02,d:0,w:0,o:0,s:0},sym:["Curled or cupped leaves","Stunted plant"],about:"Upward or downward curling, thickened, yellowing leaves with stunted growth. Spread by whiteflies on tomato, chilli, papaya and cotton.",adv:["Control whiteflies and remove weed hosts.","Remove and destroy severely affected plants.","Use resistant varieties and protected nurseries.","Ask your local expert about vector control."]},
+nutrient:{n:"Nutrient deficiency",sev:"Medium",p:{y:.3,b:.03,d:0,w:0,o:0,s:0},sym:["Even yellowing of old leaves","Yellow between green veins"],about:"Yellow leaves with a regular pattern: old leaves yellow evenly (nitrogen), or young leaves yellow between green veins (iron, magnesium, zinc).",adv:["Do a soil test before adding fertiliser.","Correct soil pH and drainage problems.","Apply the nutrient that the test shows is low.","Foliar micronutrient sprays may help; follow local guidance."]},
+pest:{n:"Pest damage (insects or mites)",sev:"Medium",p:{y:.05,b:.04,d:.01,w:.01,o:0,s:10},sym:["Holes or chewed edges","Tiny stippling or tunnels"],about:"Holes, chewed edges, silvery stippling, or winding tunnels from caterpillars, beetles, mites or leaf miners.",adv:["Check the underside of leaves for insects, eggs or webbing.","Hand-pick pests and remove badly damaged leaves.","Encourage natural enemies and use pheromone or sticky traps.","Follow local integrated pest management advice before spraying."]},
+sooty:{n:"Sooty mould",sev:"Medium",p:{y:.02,b:.02,d:.14,w:0,o:0,s:3},sym:["Black soot-like coating","Sticky honeydew"],about:"A black coating that grows on honeydew left by aphids, whiteflies, scale or mealybugs. It blocks light but can be wiped off.",adv:["Control the sap-sucking insects causing the honeydew.","Wash off the coating with water or mild soapy water.","Reduce ant activity, which protects the insects.","Ask a local expert about suitable controls."]},
+wilt:{n:'Fusarium wilt',sev:'High',p:{y:.25,b:.1,d:0,w:0,o:0,s:0},sym:['Lower leaves yellow','One-sided wilting','Brown streaks in stem'],about:'Soil-borne fungus that blocks water flow. Leaves yellow and droop, often on one side of the plant first. Common on tomato, banana, cotton and chickpea.',adv:['Uproot and destroy wilted plants; do not compost.','Rotate with non-host crops and use resistant varieties.','Improve drainage; avoid moving soil from infected plots.']},
+graymold:{n:'Grey mould (Botrytis)',sev:'Medium',p:{y:.05,b:.1,d:.05,w:.12,o:0,s:3},sym:['Grey fuzzy growth','Soft brown rot','Worse in cool damp weather'],about:'Fungus that forms grey, dusty mould on leaves, flowers and fruit, especially in cool, humid, crowded crops. Common on grape, strawberry, tomato and flowers.',adv:['Remove infected plant parts and fallen debris.','Widen spacing and ventilate; avoid wetting foliage.','Harvest promptly; ask your local office about fungicide timing.']},
+citruscanker:{n:'Citrus canker',sev:'High',p:{y:.08,b:.06,d:.02,w:0,o:0,s:15},sym:['Raised corky spots','Yellow halo around spots'],about:'Bacterial disease with raised, corky, brown lesions ringed in yellow on leaves, twigs and fruit. Spread by rain, wind and tools.',adv:['Prune and burn infected twigs; disinfect tools.','Control leaf miners that open wounds.','Follow local quarantine and copper-spray advice.']},
+greening:{n:'Citrus greening (HLB)',sev:'High',p:{y:.35,b:.02,d:0,w:0,o:0,s:0},sym:['Blotchy yellow mottle','Lopsided small fruit','Twig dieback'],about:'Bacterial disease spread by psyllid insects. Leaves show asymmetrical yellow blotches that differ from nutrient deficiency; fruit stays small and bitter.',adv:['Control psyllids and use certified disease-free plants.','Remove infected trees as advised locally.','Report suspected cases to your horticulture office.']},
+sigatoka:{n:'Black Sigatoka (banana)',sev:'High',p:{y:.1,b:.12,d:.08,w:0,o:0,s:18},sym:['Narrow brown streaks','Streaks turn black with yellow halo'],about:'Fungal leaf disease of banana. Thin reddish-brown streaks grow into black patches and dry out large areas of the leaf.',adv:['Cut and remove badly spotted leaves regularly.','Improve drainage and plant spacing.','Use locally recommended fungicide schedules.']},
+sheath:{n:'Rice sheath blight',sev:'High',p:{y:.06,b:.1,d:.02,w:.06,o:0,s:4},sym:['Oval grey-green lesions','Brown border','Starts near water line'],about:'Fungus that makes large oval lesions with grey centres and brown borders on rice sheaths and leaves. Favoured by dense planting and heavy nitrogen.',adv:['Avoid excess nitrogen and very dense planting.','Drain fields periodically; remove weeds.','Seek local fungicide advice if it climbs the plant.']},
+brownspot:{n:'Rice brown spot',sev:'Medium',p:{y:.05,b:.12,d:.01,w:0,o:0,s:25},sym:['Many oval brown spots','Yellow halo'],about:'Seed-borne fungus causing many small oval brown spots, linked to poor soil nutrition and drought stress.',adv:['Use clean, treated seed.','Correct potassium and nitrogen deficiency with a soil test.','Keep fields well watered during dry spells.']},
+alternaria:{n:'Alternaria leaf blight',sev:'Medium',p:{y:.12,b:.12,d:.03,w:0,o:0,s:12},sym:['Small dark ringed spots','Yellowing around spots'],about:'Fungus producing dark spots with fine concentric rings that merge, causing leaf drop. Affects mustard, cotton, apple, cabbage and potato.',adv:['Use healthy seed and remove crop residue.','Avoid late sowing and overhead irrigation.','Ask your local office for suitable fungicides.']},
+targetspot:{n:'Target spot',sev:'Medium',p:{y:.06,b:.1,d:.02,w:0,o:0,s:10},sym:['Tan spots with dark rings','Pale centre'],about:'Fungal disease creating round spots with target-like zones and light yellow halos, common in warm humid weather on tomato, cotton and papaya.',adv:['Remove infected leaves and improve airflow.','Avoid overhead watering.','Rotate crops; follow local fungicide guidance.']},
+fireblight:{n:'Fire blight',sev:'High',p:{y:.02,b:.1,d:.22,w:0,o:0,s:0},sym:['Leaves look scorched','Shoot tips bend like a hook','Black dead twigs'],about:'Bacterial disease of apple and pear that blackens leaves, blossoms and shoots so they look burnt.',adv:['Prune 30 cm below visible infection in dry weather.','Disinfect tools between cuts.','Avoid heavy nitrogen; ask your horticulture office about sprays.']},
+peachcurl:{n:'Peach leaf curl',sev:'Medium',p:{y:.1,b:.02,d:0,w:0,o:.12,s:0},sym:['Red-pink puckered blisters','Thick curled leaves'],about:'Fungus that makes young peach and almond leaves thick, puckered and reddish before they drop in cool wet spring weather.',adv:['Remove and destroy affected leaves.','Protect buds before they open, as advised locally.','Keep trees well fed and watered after leaf fall.']},
+tungro:{n:'Rice tungro',sev:'High',p:{y:.32,b:.01,d:0,w:0,o:.07,s:0},sym:['Yellow-orange leaves','Stunted plants','Fewer tillers'],about:'Virus complex spread by green leafhoppers. Leaves turn yellow to orange from the tip and plants stay stunted.',adv:['Control leafhoppers and synchronise planting.','Remove infected plants early; use resistant varieties.','Confirm with an expert, as nutrient shortage looks similar.']},
+ringspot:{n:'Ring spot virus',sev:'Medium',p:{y:.12,b:.05,d:0,w:0,o:0,s:6},sym:['Pale concentric rings','Stunted growth'],about:'Virus causing ring and line patterns on leaves; spread by aphids, nematodes and tools. Seen on papaya, tobacco, tomato and cucurbits.',adv:['Remove infected plants; control aphids.','Use virus-free seed or seedlings.','Clean tools and rogue out weeds.']},
+bacterialblight:{n:'Bacterial blight',sev:'High',p:{y:.15,b:.12,d:.02,w:0,o:0,s:5},sym:['Water-soaked streaks','Yellow dry leaf margins'],about:'Bacterial disease with water-soaked streaks that turn yellow then dry along leaf edges. Affects rice, cotton and pomegranate.',adv:['Use certified seed and resistant varieties.','Avoid excess nitrogen and flooding from infected fields.','Follow local copper or antibiotic advice, not self-prescribed sprays.']}
+};
+const $=s=>document.querySelector(s),cv=$("#cv"),ctx=cv.getContext("2d");
+let loaded=false,lastRes=null,syms=new Set();
+const cap=async n=>{try{return window.claude?await claude.use(n):null}catch(e){return null}};
+
+/* ---------- procedural sample leaves ---------- */
+function rng(s){return()=>(s=(s*16807)%2147483647)/2147483647}
+function drawLeaf(c,type,seed=7){
+ const x=c.getContext("2d"),W=c.width,H=c.height,r=rng(seed*977+13);
+ x.fillStyle="#8a8f94";x.fillRect(0,0,W,H);
+ x.save();x.translate(W/2,H/2);const sc=W/640;x.scale(sc,sc);
+ const path=()=>{x.beginPath();x.moveTo(-260,0);x.bezierCurveTo(-140,-200,140,-200,260,0);x.bezierCurveTo(140,200,-140,200,-260,0);x.closePath()};
+ path();const g=x.createLinearGradient(-260,0,260,0);g.addColorStop(0,"#2f7d32");g.addColorStop(1,"#3f9a3a");x.fillStyle=g;x.fill();x.clip();
+ x.strokeStyle="rgba(190,230,150,.55)";x.lineWidth=5;x.beginPath();x.moveTo(-260,0);x.lineTo(260,0);x.stroke();x.lineWidth=2;
+ for(let i=-200;i<=200;i+=50){x.beginPath();x.moveTo(i,0);x.lineTo(i+60,-120);x.moveTo(i,0);x.lineTo(i+60,120);x.stroke()}
+ const pt=()=>{let a,b;do{a=(r()-.5)*460;b=(r()-.5)*260}while((a/250)**2+(b/150)**2>.8);return[a,b]};
+ const blob=(px,py,rad,col,j=.4)=>{x.fillStyle=col;x.beginPath();for(let k=0;k<=12;k++){const an=k/12*6.283,rr=rad*(1-j/2+r()*j);x[k?"lineTo":"moveTo"](px+Math.cos(an)*rr,py+Math.sin(an)*rr)}x.closePath();x.fill()};
+ if(type==="early")for(let i=0;i<7;i++){const[a,b]=pt(),R=22+r()*14;blob(a,b,R*1.9,"rgba(235,215,40,.8)",.3);blob(a,b,R,"#6b4423",.25);blob(a,b,R*.65,"#8a5a2e",.2);blob(a,b,R*.35,"#4a2c14",.2)}
+ if(type==="late"){for(let i=0;i<3;i++){const[a,b]=pt();blob(a,b,70+r()*30,"rgba(220,225,215,.5)",.5);blob(a,b,55+r()*25,"#2b2a1a",.6);blob(a,b,30,"#5a4a28",.5)}}
+ if(type==="powdery")for(let i=0;i<9;i++){const[a,b]=pt();blob(a,b,40+r()*45,"rgba(245,247,245,.9)",.7)}
+ if(type==="rust")for(let i=0;i<60;i++){const[a,b]=pt();blob(a,b,6+r()*6,"#d9701a",.3)}
+ if(type==="bact")for(let i=0;i<45;i++){const[a,b]=pt();blob(a,b,13,"rgba(225,215,50,.75)",.3);blob(a,b,6+r()*3,"#2a1f10",.5)}
+ if(type==="mosaic"){for(let i=0;i<14;i++){const[a,b]=pt();blob(a,b,45+r()*40,"rgba(225,225,70,.9)",.7)}}
+ const dia=(a,b,w,h,an,col)=>{x.save();x.translate(a,b);x.rotate(an);x.fillStyle=col;x.beginPath();x.moveTo(-w,0);x.lineTo(0,-h);x.lineTo(w,0);x.lineTo(0,h);x.closePath();x.fill();x.restore()};
+ if(type==='septoria')for(let i=0;i<40;i++){const[a,b]=pt();blob(a,b,10+r()*3,'#4a3320',.2);blob(a,b,5.5,'#ddd6bc',.2)}
+ if(type==='downy'){for(let i=0;i<7;i++){const[a,b]=pt(),R=45+r()*30;blob(a,b,R,'rgba(225,215,60,.85)',.6);for(let j=0;j<10;j++)blob(a+(r()-.5)*R,b+(r()-.5)*R,5,'rgba(150,130,175,.6)',.3)}}
+ if(type==='anthracnose')for(let i=0;i<5;i++){const[a,b]=pt(),R=26+r()*14;blob(a,b,R*1.4,'#a9825a',.6);blob(a,b,R,'#2a1d12',.7);blob(a,b,R*.5,'#120c06',.5)}
+ if(type==='blast')for(let i=0;i<9;i++){const[a,b]=pt(),w=16+r()*8,h=34+r()*14,an=(r()-.5)*.6;dia(a,b,w+8,h+10,an,'rgba(235,215,60,.7)');dia(a,b,w,h,an,'#7a5230');dia(a,b,w*.55,h*.6,an,'#cfccbd')}
+ if(type==='cercospora')for(let i=0;i<24;i++){const[a,b]=pt();blob(a,b,15,'#8b3a2a',.25);blob(a,b,10,'#c8b89a',.25)}
+ if(type==='scab')for(let i=0;i<16;i++){const[a,b]=pt();blob(a,b,14+r()*10,'#3b3d1c',.8);blob(a,b,7,'#5b5a2a',.8)}
+ if(type==='blackrot')for(let i=0;i<5;i++){const[a,b]=pt();blob(a,b,34,'#6b4423',.2);blob(a,b,26,'#8a5a2e',.2);for(let j=0;j<7;j++)blob(a+(r()-.5)*30,b+(r()-.5)*30,3,'#0d0d0d',.2)}
+ if(type==='scorch'){path();x.lineJoin='round';x.lineWidth=110;x.strokeStyle='rgba(225,215,60,.55)';x.stroke();x.lineWidth=60;x.strokeStyle='#8a5a2a';x.stroke();x.lineWidth=26;x.strokeStyle='#5e3a18';x.stroke()}
+ if(type==='curl'){path();x.fillStyle='rgba(215,220,70,.55)';x.fill();x.lineWidth=40;x.strokeStyle='rgba(15,65,22,.7)';x.stroke();x.strokeStyle='rgba(15,65,22,.45)';x.lineWidth=5;for(let i=-180;i<=180;i+=36){x.beginPath();x.moveTo(i,-95+Math.abs(i)*.2);x.quadraticCurveTo(i+14,0,i,95-Math.abs(i)*.2);x.stroke()}}
+ if(type==='nutrient'){path();x.fillStyle='rgba(232,226,70,.88)';x.fill();x.strokeStyle='#2f7d32';x.lineWidth=11;x.beginPath();x.moveTo(-260,0);x.lineTo(260,0);x.stroke();x.lineWidth=7;for(let i=-200;i<=200;i+=50){x.beginPath();x.moveTo(i,0);x.lineTo(i+60,-120);x.moveTo(i,0);x.lineTo(i+60,120);x.stroke()}}
+ if(type==='pest'){for(let i=0;i<11;i++){const[a,b]=pt(),R=8+r()*16;blob(a,b,R+5,'#3a2a14',.4);blob(a,b,R,'#8a8f94',.4)}for(let i=0;i<9;i++){const an=r()*6.283,a=Math.cos(an)*250,b=Math.sin(an)*150;blob(a,b,18+r()*14,'#8a8f94',.5)}}
+ if(type==='sooty'){for(let i=0;i<8;i++){const[a,b]=pt();blob(a,b,38+r()*34,'rgba(15,15,12,.88)',.6)}for(let i=0;i<20;i++){const[a,b]=pt();blob(a,b,9,'rgba(15,15,12,.8)',.5)}}
+ if(type==='wilt'){x.fillStyle='rgba(225,215,60,.8)';x.fillRect(-260,-160,260,320);for(let i=0;i<5;i++){const[a,b]=pt();if(a<0)blob(a,b,30,'#6b4423',.6)}x.strokeStyle='#6b4423';x.lineWidth=4;x.beginPath();x.moveTo(-260,0);x.lineTo(0,0);x.stroke()}
+ if(type==='graymold')for(let i=0;i<6;i++){const[a,b]=pt();blob(a,b,38+r()*20,'rgba(175,175,170,.85)',.6);blob(a,b,18,'rgba(90,70,50,.6)',.5)}
+ if(type==='citruscanker')for(let i=0;i<26;i++){const[a,b]=pt();blob(a,b,17,'rgba(235,215,50,.85)',.2);blob(a,b,9,'#8a6a3a',.4);blob(a,b,4,'#d8c28a',.3)}
+ if(type==='greening'){for(let i=0;i<8;i++){const[a,b]=pt();blob(a,b,40+r()*30,'rgba(225,225,80,.85)',.7)}x.strokeStyle='#2f7d32';x.lineWidth=5;x.beginPath();x.moveTo(-260,0);x.lineTo(260,0);x.stroke()}
+ if(type==='sigatoka')for(let i=0;i<18;i++){const[a,b]=pt(),an=1.25+(r()-.5)*.2;dia(a,b,10,34,an,'rgba(235,215,40,.7)');dia(a,b,5,28,an,'#4a2c14')}
+ if(type==='sheath')for(let i=0;i<4;i++){const[a,b]=pt();blob(a,b,55,'#6b4423',.3);blob(a,b,44,'#b9b79a',.3)}
+ if(type==='brownspot')for(let i=0;i<30;i++){const[a,b]=pt(),an=r()*3;dia(a,b,12,18,an,'rgba(235,215,50,.7)');dia(a,b,7,12,an,'#6b3d1a')}
+ if(type==='alternaria')for(let i=0;i<12;i++){const[a,b]=pt(),R=14+r()*8;blob(a,b,R*1.7,'rgba(225,210,50,.7)',.3);blob(a,b,R,'#3d2814',.2);blob(a,b,R*.65,'#8a6035',.2);blob(a,b,R*.3,'#111',.2)}
+ if(type==='targetspot')for(let i=0;i<8;i++){const[a,b]=pt();blob(a,b,34,'rgba(235,225,90,.55)',.2);blob(a,b,24,'#b08a55',.2);blob(a,b,16,'#6b4423',.2);blob(a,b,8,'#c9a96b',.2)}
+ if(type==='fireblight'){x.fillStyle='rgba(120,70,30,.8)';x.fillRect(10,-160,60,320);x.fillStyle='rgba(30,22,12,.92)';x.fillRect(60,-160,200,320)}
+ if(type==='peachcurl')for(let i=0;i<7;i++){const[a,b]=pt();blob(a,b,42+r()*18,'rgba(225,95,85,.85)',.5);blob(a,b,24,'rgba(240,160,140,.6)',.5)}
+ if(type==='tungro'){x.fillStyle='rgba(235,185,45,.75)';x.fillRect(-260,-160,520,320);x.fillStyle='rgba(230,140,40,.6)';x.fillRect(80,-160,180,320);x.strokeStyle='rgba(150,190,90,.7)';x.lineWidth=4;x.beginPath();x.moveTo(-260,0);x.lineTo(260,0);x.stroke()}
+ if(type==='ringspot'){x.strokeStyle='rgba(230,225,120,.9)';x.lineWidth=5;for(let i=0;i<6;i++){const[a,b]=pt();for(let q=12;q<=36;q+=12){x.beginPath();x.arc(a,b,q,0,6.283);x.stroke()}}}
+ if(type==='bacterialblight')for(let i=0;i<10;i++){const a=-230+i*50,b=(i%2?1:-1)*100*Math.sqrt(Math.max(0,1-(a/260)**2))*.85;blob(a,b,42,'rgba(225,215,60,.75)',.6);blob(a,b,22,'rgba(150,120,50,.8)',.6)}
+ x.restore();
+}
+const SAMPLES=[["healthy","Healthy"],["early","Early blight"],["late","Late blight"],["powdery","Powdery mildew"],["rust","Leaf rust"],["bact","Bacterial spot"],["mosaic","Yellowing"]];
+$("#samples").innerHTML=SAMPLES.map(([k,n])=>`<button class="chip" data-s="${k}">${n}</button>`).join("");
+$("#moreS").innerHTML+=Object.keys(D).filter(k=>!SAMPLES.some(a=>a[0]===k)).map(k=>`<option value="${k}">${D[k].n}</option>`).join("");
+$("#moreS").onchange=e=>{const k=e.target.value;if(!k)return;drawLeaf(cv,k,Math.floor(Math.random()*50)+1);setLoaded(true);toast("Sample loaded: "+D[k].n);e.target.value=""};
+$("#samples").onclick=e=>{const k=e.target.dataset.s;if(!k)return;drawLeaf(cv,k,Math.floor(Math.random()*50)+1);setLoaded(true);toast("Sample loaded: "+D[k].n)};
+
+/* ---------- image input ---------- */
+function setLoaded(v){loaded=v;overlay(null);$("#hint").classList.toggle("hide",v);$("#anBtn").disabled=!v;if(v)$("#anBtn").focus()}
+function drawFit(src,sw,sh){const k=Math.min(cv.width/sw,cv.height/sh),w=sw*k,h=sh*k;ctx.fillStyle="#8a8f94";ctx.fillRect(0,0,cv.width,cv.height);ctx.drawImage(src,(cv.width-w)/2,(cv.height-h)/2,w,h)}
+async function loadFile(f){if(!f||!f.type.startsWith("image/")){toast("Please choose an image file");return}
+ if(f.size>25e6){toast("Image too large (max 25 MB)");return}
+ try{const b=await createImageBitmap(f,{imageOrientation:"from-image"});drawFit(b,b.width,b.height);b.close&&b.close();setLoaded(true);return}catch(e){}
+ const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{drawFit(im,im.width,im.height);URL.revokeObjectURL(u);setLoaded(true)};im.onerror=()=>{URL.revokeObjectURL(u);toast("Could not read that image")};im.src=u}
+$("#upBtn").onclick=()=>$("#file").click();$("#camBtn").onclick=openCam;
+$("#file").onchange=e=>{loadFile(e.target.files[0]);e.target.value=""};$("#cam").onchange=e=>{loadFile(e.target.files[0]);e.target.value=""};
+$("#clrBtn").onclick=()=>{lastRes=null;try{speechSynthesis.cancel()}catch(e){}ctx.clearRect(0,0,cv.width,cv.height);setLoaded(false);syms.clear();document.querySelectorAll("#sym .chip").forEach(c=>c.classList.remove("on"));$("#res").innerHTML="<h2>Results</h2><p style='color:var(--mut)'>Load a leaf and press <b>Analyse leaf</b>.</p>"};
+const st=$("#stage");["dragenter","dragover"].forEach(ev=>st.addEventListener(ev,e=>{e.preventDefault();st.classList.add("drag")}));
+["dragleave","drop"].forEach(ev=>st.addEventListener(ev,e=>{e.preventDefault();st.classList.remove("drag")}));
+st.addEventListener("drop",e=>loadFile(e.dataTransfer.files[0]));
+st.addEventListener("click",()=>{if(!loaded)$("#file").click()});st.tabIndex=0;st.setAttribute("role","button");st.setAttribute("aria-label","Add a leaf photo");st.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&!loaded){e.preventDefault();$("#file").click()}});
+
+/* ---------- camera and share ---------- */
+let stream;
+async function openCam(){
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast("Live camera not supported. Opening photo capture.");$("#cam").click();return}
+ try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});const v=$("#vid");v.srcObject=stream;$("#camDlg").showModal();await v.play()}
+ catch(e){stopCam();if($("#camDlg").open)$("#camDlg").close();toast("Camera access blocked. Opening photo capture instead.");$("#cam").click()}
+}
+function stopCam(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}}
+$("#snapB").onclick=()=>{const v=$("#vid");if(!v.videoWidth)return;drawFit(v,v.videoWidth,v.videoHeight);$("#camDlg").close();setLoaded(true);toast("Photo captured")};
+$("#camX").onclick=()=>$("#camDlg").close();$("#camDlg").addEventListener("close",stopCam);
+$("#shX").onclick=()=>$("#shDlg").close();$("#shCopy").onclick=()=>copy($("#shTxt").value);
+$("#shDev").onclick=async()=>{try{await navigator.share({title:"AgriScan report",text:$("#shTxt").value})}catch(e){if(e.name!=="AbortError")toast("Device share unavailable. Use Copy.")}};
+
+let crop="";const CROPS=["Tomato","Potato","Rice","Wheat","Maize","Cotton","Grape","Apple","Mango","Chilli","Banana","Other"];
+$("#crops").innerHTML=CROPS.map(c=>`<button class="chip" data-c="${c}" aria-pressed="false">${c}</button>`).join("");
+$("#crops").onclick=e=>{const c=e.target.dataset.c;if(!c)return;crop=crop===c?"":c;document.querySelectorAll("#crops .chip").forEach(b=>{const on=b.dataset.c===crop;b.classList.toggle("on",on);b.setAttribute("aria-pressed",on)})};
+
+/* ---------- symptoms ---------- */
+const SYM={"Curled leaves":{curl:2,mosaic:.5},"Holes or chewed edges":{pest:2},"Black sooty coating":{sooty:2},"Dry brown edges":{scorch:2},"Grey-purple fuzz underneath":{downy:2},"Diamond-shaped spots":{blast:2},"Sunken dark lesions":{anthracnose:1.5},"Yellow between veins":{nutrient:2},"Brown spots":{early:1,bact:.6,septoria:.6,cercospora:.8,brownspot:.8},"Orange powder or pustules":{rust:2},"White powdery coating":{powdery:2},"Dark greasy patches":{late:2},"Yellow patches":{mosaic:1,bact:.3},"Small angular spots":{bact:1.5},"Rings in spots":{early:1.5}};
+$("#sym").innerHTML=Object.keys(SYM).map(k=>`<button class="chip" data-y="${k}" aria-pressed="false">${k}</button>`).join("");
+$("#sym").onclick=e=>{const k=e.target.dataset.y;if(!k)return;const on=!syms.has(k);on?syms.add(k):syms.delete(k);e.target.classList.toggle("on",on);e.target.setAttribute("aria-pressed",on)};
+
+/* ---------- weather, overlay, tools ---------- */
+let wx="";const WX={"Humid and rainy":{late:1.5,downy:1.5,early:.7,blast:1,anthracnose:1,bact:.8,septoria:.8,blackrot:.8,scab:1},"Hot and dry":{scorch:1.5,pest:1,curl:.8,powdery:.4},"Cool nights, dry days":{powdery:1.8,rust:.8},"Warm and humid":{rust:1,cercospora:1.2,bact:1,anthracnose:1,mosaic:.3}};
+$("#wx").innerHTML=Object.keys(WX).map(k=>`<button class="chip" data-w="${k}" aria-pressed="false">${k}</button>`).join("");
+$("#wx").onclick=e=>{const k=e.target.dataset.w;if(!k)return;wx=wx===k?"":k;document.querySelectorAll("#wx .chip").forEach(b=>{const on=b.dataset.w===wx;b.classList.toggle("on",on);b.setAttribute("aria-pressed",on)})};
+const slim=m=>{const{cls,les,W,H,...r}=m;return r},area=m=>m?Math.round((m.b+m.d+m.w+m.o+m.y*.5)*100):0;
+const STG=[["Mild",5],["Moderate",15],["Severe",30],["Critical",101]];
+function overlay(m){const o=$("#ov"),x=o.getContext("2d");x.clearRect(0,0,o.width,o.height);if(!m||!m.les)return;const k=o.width/m.W,C={3:"rgba(255,140,30,.75)",4:"rgba(255,60,90,.75)",5:"rgba(200,70,255,.75)"};
+ for(let i=0;i<m.W*m.H;i++)if(m.les[i]){x.fillStyle=C[m.cls[i]]||"rgba(80,230,255,.7)";x.fillRect((i%m.W)*k,((i/m.W)|0)*k,k,k)}}
+let trCtl;
+async function tr(o,lang){const box=$('#tr'),d=D[o.r[0].k],code=lang==='Hindi'?'hi':'mr',src=d.n+'. '+d.about+'\n- '+d.adv.join('\n- ');
+ const fb=()=>`<a href="https://translate.google.com/?sl=en&tl=${code}&text=${encodeURIComponent(src)}&op=translate" target="_blank" rel="noopener" style="color:var(--cy)">Open in Google Translate</a>`;
+ box.dataset.lang='';box.textContent='Translating… (allow the permission prompt if one appears)';
+ if(trCtl)trCtl.abort();trCtl=new AbortController();
+ try{const s=await cap('sample');if(!s)throw{code:'na'};
+  const ask=opt=>s('Translate this crop-disease advice into simple '+lang+' (Devanagari script) that a farmer can follow. Keep the disease name in English in brackets. Reply with ONLY the translated text as plain lines, no extra comments.\n'+src,Object.assign({cache:false,signal:trCtl.signal,onText:({text})=>{box.textContent=text}},opt));let v;try{v=await ask({modelTier:'quick'})}catch(e1){if(!e1||e1.code!=='upstream_error')throw e1;box.textContent='Temporary problem, retrying…';await new Promise(r=>setTimeout(r,1200));v=await ask({})}
+  const out=(v.text||'').trim();if(!out)throw{code:'empty'};box.textContent=out;box.dataset.lang=lang}
+ catch(e){const c=e&&e.code;if(c==='cancelled')return;box.innerHTML=(c==='na'?'AI translation is not available in this view.':c==='not_granted'?'Permission was declined. Reload the page and choose Allow.':c==='rate_limited'?'Too many requests. Wait a moment and try again.':c==='upstream_error'?'The AI service had a temporary problem twice. Wait a minute and tap the language again.':'Translation failed ('+(c||'error')+'). Tap the language again.')+' '+fb()}}
+async function trOld(o,lang){const box=$("#tr"),d=D[o.r[0].k];box.textContent="Translating…";
+ try{const s=await cap("sample");if(!s)throw 0;const v=await s("Translate this crop-disease advice into simple "+lang+" a farmer can follow. Keep the disease name in English in brackets. Reply with ONLY the translated text as plain lines, no JSON, no extra comments.\n"+d.n+". "+d.about+"\n- "+d.adv.join("\n- "));if(!(v.text||"").trim())throw 0;box.textContent=v.text.trim();box.dataset.lang=lang}catch(e){box.textContent="Translation unavailable"+(e&&e.code==="not_granted"?": permission was declined. Tap the language again and allow it.":e&&e.code==="rate_limited"?": too many requests, wait a moment and retry.":". Please tap the language again.")}}
+function speak(){if(!window.speechSynthesis){toast("Speech not supported on this device");return}const t=$("#tr").textContent&&$("#tr").dataset.lang?$("#tr").textContent:$("#advTxt").textContent,u=new SpeechSynthesisUtterance(t),l=$("#tr").dataset.lang;const want=l==="Hindi"?"hi-IN":l==="Marathi"?"mr-IN":"en-IN",vs=speechSynthesis.getVoices(),has=c=>vs.some(v=>v.lang.replace("_","-").toLowerCase().startsWith(c.slice(0,2).toLowerCase()));let use=want;
+ if(vs.length&&!has(want)){if(l==="Marathi"&&has("hi-IN")){use="hi-IN";toast("No Marathi voice found. Using a Hindi voice.")}else if(l){toast("No "+l+" voice on this device. Install one in your device's speech settings.");return}}
+ u.lang=use;speechSynthesis.cancel();speechSynthesis.speak(u)}
+/* ---------- analysis ---------- */
+/* Leaf finder v2: works for any leaf colour and background */
+function measure(){
+ const N=160,t=document.createElement('canvas');t.width=N;t.height=Math.round(N*cv.height/cv.width);const tx=t.getContext('2d',{willReadFrequently:true});tx.drawImage(cv,0,0,t.width,t.height);
+ const W=t.width,H=t.height,n=W*H,px=tx.getImageData(0,0,W,H).data,Hh=new Float32Array(n),S=new Float32Array(n),V=new Float32Array(n);
+ for(let i=0;i<n;i++){const r=px[i*4]/255,g=px[i*4+1]/255,b=px[i*4+2]/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;let h=0;if(d){h=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4;h*=60;if(h<0)h+=360}Hh[i]=h;S[i]=mx?d/mx:0;V[i]=mx}
+ const dist=(i,c)=>Math.hypot(px[i*4]-c[0],px[i*4+1]-c[1],px[i*4+2]-c[2]),LB=[138,143,148];
+ /* background colour = most common colour on the photo border */
+ const bk={};let ring=0;for(let i=0;i<n;i++){const X=i%W,Y=(i/W)|0;if(X>2&&X<W-3&&Y>2&&Y<H-3)continue;if(dist(i,LB)<14)continue;ring++;const k=(px[i*4]>>4)+','+(px[i*4+1]>>4)+','+(px[i*4+2]>>4),o=bk[k]||(bk[k]={c:0,r:0,g:0,b:0});o.c++;o.r+=px[i*4];o.g+=px[i*4+1];o.b+=px[i*4+2]}
+ let bg=null,bc=0;for(const k in bk)if(bk[k].c>bc){bc=bk[k].c;bg=bk[k]}
+ const BG=bg&&bc/ring>.3?[bg.r/bg.c,bg.g/bg.c,bg.b/bg.c]:null,busy=ring>0&&!BG;
+ const ell=i=>{const X=i%W,Y=(i/W)|0;return((X-W/2)/(W*.44))**2+((Y-H/2)/(H*.44))**2<=1};
+ const fg=new Uint8Array(n);for(let i=0;i<n;i++)fg[i]=!busy&&dist(i,LB)>45&&(!BG||dist(i,BG)>45)?1:0;
+ const largest=m=>{const lab=new Uint8Array(n);let bl=null;for(let i=0;i<n;i++){if(!m[i]||lab[i])continue;const q=[i],list=[];lab[i]=1;while(q.length){const j=q.pop();list.push(j);const X=j%W;if(X>0&&m[j-1]&&!lab[j-1]){lab[j-1]=1;q.push(j-1)}if(X<W-1&&m[j+1]&&!lab[j+1]){lab[j+1]=1;q.push(j+1)}if(j>=W&&m[j-W]&&!lab[j-W]){lab[j-W]=1;q.push(j-W)}if(j<n-W&&m[j+W]&&!lab[j+W]){lab[j+W]=1;q.push(j+W)}}if(!bl||list.length>bl.length)bl=list}return bl};
+ let L=busy?null:largest(fg);if(!L||L.length<n*.03){L=[];for(let i=0;i<n;i++)if(ell(i))L.push(i)}
+ const lo=new Int16Array(H).fill(W),hi=new Int16Array(H).fill(-1);for(const j of L){const X=j%W,Y=(j/W)|0;if(X<lo[Y])lo[Y]=X;if(X>hi[Y])hi[Y]=X}
+ const fl=new Uint8Array(n);for(let Y=0;Y<H;Y++)for(let X=lo[Y];X<=hi[Y];X++)fl[Y*W+X]=1;
+ const mk=new Uint8Array(n);for(let i=W+1;i<n-W-1;i++)if(fl[i]&&fl[i-1]&&fl[i+1]&&fl[i-W]&&fl[i+W])mk[i]=1;
+ /* the leaf's own base colour (handles red, purple, silver leaves) */
+ const hb=new Array(36).fill(0);let tot=0;for(let i=0;i<n;i++)if(mk[i]){tot++;if(S[i]>.2&&V[i]>.2)hb[Math.min(35,Hh[i]/10|0)]++}
+ if(tot<200)return null;
+ let bi=0;for(let k=1;k<36;k++)if(hb[k]>hb[bi])bi=k;let near=0;for(let k=-3;k<=3;k++)near+=hb[(bi+k+36)%36];
+ const ctr=bi*10+5,ng=(ctr>=185||ctr<8)&&near/tot>.45,hd=h=>{const d=Math.abs(h-ctr);return Math.min(d,360-d)};
+ const cls=new Uint8Array(n),les=new Uint8Array(n),cnt=[0,0,0,0,0,0,0];
+ for(let i=0;i<n;i++){if(!mk[i])continue;const s=S[i],v=V[i],h=Hh[i];let c=0;
+  if((ng&&s>.2&&v>.2&&hd(h)<=30)||(s>.15&&h>=70&&h<=185&&v>.1))c=1;
+  else if(s>.4&&h>=42&&h<70&&v>.5)c=2;
+  else if(s>.6&&h>=14&&h<42&&v>.6)c=3;
+  else if(s>.3&&h>=8&&h<45&&v>.15&&v<=.6)c=4;
+  else if(s>.12&&v<.3&&v>0)c=5;
+  else if(v>.8&&s<.15)c=6;
+  cls[i]=c;cnt[c]++;if(c>=3&&c!==2)les[i]=1}
+ let spots=0;const seen=new Uint8Array(n);
+ for(let i=0;i<n;i++){if(!les[i]||seen[i])continue;let k=0;const q=[i];seen[i]=1;while(q.length){const j=q.pop();k++;const X=j%W;for(const u of[j-1,j+1,j-W,j+W]){if(u<0||u>=n||seen[u]||!les[u])continue;if(Math.abs(u%W-X)>1)continue;seen[u]=1;q.push(u)}}if(k>=6)spots++}
+ const f=k=>cnt[k]/tot;return{y:f(2),o:f(3),b:f(4),d:f(5),w:f(6),g:f(1),s:Math.min(spots,40),tot,cls,les,W,H,base:ng?'non-green':'green'}
+}
+function measureOld(){
+ const N=160,t=document.createElement("canvas");t.width=N;t.height=Math.round(N*cv.height/cv.width);const tx=t.getContext("2d",{willReadFrequently:true});tx.drawImage(cv,0,0,t.width,t.height);
+ const W=t.width,H=t.height,px=tx.getImageData(0,0,W,H).data,cls=new Uint8Array(W*H);
+ let x0=W,x1=0,y0=H,y1=0;
+ for(let i=0;i<W*H;i++){const r=px[i*4]/255,g=px[i*4+1]/255,b=px[i*4+2]/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn,s=mx?d/mx:0,v=mx;let h=0;
+  if(d){h=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4;h*=60;if(h<0)h+=360}
+  let c=0;// 1 green,2 yellow,3 orange,4 brown,5 dark,6 white
+  if(s>.25&&h>=70&&h<=170&&v>.2)c=1;
+  else if(s>.4&&h>=42&&h<70&&v>.5)c=2;
+  else if(s>.6&&h>=14&&h<42&&v>.6)c=3;
+  else if(s>.3&&h>=8&&h<45&&v>.15&&v<=.6)c=4;
+  else if(s>.12&&v<.3&&v>0)c=5;
+  if(c===1||c===2){const X=i%W,Y=(i/W)|0;if(X<x0)x0=X;if(X>x1)x1=X;if(Y<y0)y0=Y;if(Y>y1)y1=Y}
+  cls[i]=c;px[i*4+3]=c}
+ if(x1<=x0||y1<=y0)return null;
+ const cx=(x0+x1)/2,cy=(y0+y1)/2,rx=(x1-x0)/2*.95,ry=(y1-y0)/2*.95,cnt=[0,0,0,0,0,0,0];let tot=0;const les=new Uint8Array(W*H);
+ for(let Y=y0;Y<=y1;Y++)for(let X=x0;X<=x1;X++){if(((X-cx)/rx)**2+((Y-cy)/ry)**2>1)continue;const i=Y*W+X;tot++;let c=cls[i];
+  const r=px[i*4]/255,g=px[i*4+1]/255,b=px[i*4+2]/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b);
+  if(!c&&mx>.8&&(mx-mn)/mx<.15)c=6;cnt[c]++;if(c>=3&&c!==2)les[i]=1}
+ // connected spots
+ let spots=0;const seen=new Uint8Array(W*H);
+ for(let i=0;i<W*H;i++){if(!les[i]||seen[i])continue;let n=0;const q=[i];seen[i]=1;while(q.length){const j=q.pop();n++;const X=j%W;for(const k of[j-1,j+1,j-W,j+W]){if(k<0||k>=W*H||seen[k]||!les[k])continue;if(Math.abs(k%W-X)>1)continue;seen[k]=1;q.push(k)}}if(n>=6)spots++}
+ if(tot<200)return null;
+ const f=k=>cnt[k]/tot;return{y:f(2),o:f(3),b:f(4),d:f(5),w:f(6),g:f(1),s:Math.min(spots,40),tot,cls,les,W,H}
+}
+const GEN=["healthy","nutrient","pest","scorch","mosaic"];
+const CM={Tomato:["early","late","septoria","bact","curl","wilt","targetspot","graymold","alternaria","ringspot"],Potato:["early","late","alternaria","bacterialblight","mosaic"],Rice:["blast","sheath","brownspot","tungro","bacterialblight"],Wheat:["rust","powdery","septoria","cercospora"],Maize:["cercospora","rust","downy","brownspot"],Cotton:["curl","bacterialblight","alternaria","targetspot","wilt"],Grape:["downy","powdery","blackrot","anthracnose","graymold"],Apple:["scab","fireblight","blackrot","powdery","alternaria","rust"],Mango:["anthracnose","powdery","sooty"],Chilli:["anthracnose","cercospora","curl","bact","powdery"],Banana:["sigatoka","wilt","mosaic","cercospora"]};
+function classify(m){
+ const sc={};const keys=Object.keys(D);
+ for(const k of keys){const p=D[k].p;let e=0;
+  e+=((m.y-p.y)/.18)**2+((m.b-p.b)/.1)**2+((m.d-p.d)/.08)**2+((m.w-p.w)/.14)**2+((m.o-p.o)/.08)**2;
+  e+=(((m.s>=1?Math.log(m.s+1):0)-(p.s?Math.log(p.s+1):0))/1.6)**2;
+  sc[k]=-e/2}
+ const lesion=m.b+m.d+m.w+m.o;
+ if(lesion<.03&&m.y<.08)sc.healthy+=3;
+ if(wx&&WX[wx])for(const k in WX[wx])if(sc[k]!==undefined)sc[k]+=WX[wx][k]*1.2;
+ syms.forEach(s=>{const w=SYM[s];for(const k in w)if(sc[k]!==undefined)sc[k]+=w[k]*1.4});
+ if(crop&&CM[crop]){const L=CM[crop];for(const k in sc)if(L.includes(k))sc[k]+=1.6;else if(!GEN.includes(k))sc[k]-=.9}
+ const mx=Math.max(...Object.values(sc)),ex={};let sum=0;for(const k in sc){ex[k]=Math.exp((sc[k]-mx)*.9);sum+=ex[k]}
+ return keys.map(k=>({k,p:ex[k]/sum})).sort((a,b)=>b.p-a.p)
+}
+function heur(){if(!loaded)return;st.classList.add("busy");$("#anBtn").disabled=true;
+ setTimeout(()=>{st.classList.remove("busy");$("#anBtn").disabled=false;const m=measure();
+  if(!m){$("#res").innerHTML="<h2>Leaf not found</h2><p>We could not find enough leaf area. Retake the photo with the leaf filling most of the frame on a plain background.</p>";return}
+  const r=classify(m);lastRes={m,r,time:Date.now(),img:thumb(),syms:[...syms]};show(lastRes,true)},1500)}
+async function vision(){
+ const s=await cap("sample");if(!s)return null;const lim=await s.limits();if(!lim||!lim.images)return null;
+ const blob=await new Promise(r=>cv.toBlob(r,"image/jpeg",.85));
+ const ids=Object.keys(D).map(k=>k+" = "+D[k].n).join("; ");
+ return await s.json("You are a plant pathology assistant. Examine the attached leaf photo and judge its condition. Allowed ids: "+ids+". Crop selected by user: "+(crop||"not specified, identify it yourself")+". The leaf can be any crop or plant variety; choose the best-matching ids and rank several if more than one problem is visible. User-reported symptoms: "+([...syms].join(", ")||"none")+". Reply with ONLY JSON: {\"leaf\":true or false,\"crop\":\"crop name or unknown\",\"top\":[{\"id\":\"allowed id\",\"p\":0 to 1}, up to 4 entries, p values sum to 1],\"note\":\"one short sentence describing the visible symptoms\"}. Set leaf false if the image is not a plant leaf.",{images:[blob],cache:false});
+}
+async function analyse(){
+ if(!loaded)return;st.classList.add("busy");$("#anBtn").disabled=true;
+ let v=null;try{v=await vision()}catch(e){}
+ st.classList.remove("busy");$("#anBtn").disabled=false;
+ if(!v){toast("AI vision unavailable. Using offline colour scan.");heur();return}
+ if(v.leaf===false){$("#res").innerHTML="<h2>No leaf found</h2><p>This image does not look like a plant leaf. Retake the photo with one leaf filling most of the frame.</p>";return}
+ let r=(v.top||[]).filter(x=>D[x.id]).map(x=>({k:x.id,p:Math.max(0,Math.min(1,+x.p||0))}));
+ if(!r.length){heur();return}
+ const t=r.reduce((a,b)=>a+b.p,0)||1;r=r.map(x=>({k:x.k,p:x.p/t})).sort((a,b)=>b.p-a.p);
+ const m=measure()||{g:0,y:0,b:0,d:0,w:0,o:0,s:0};
+ lastRes={m,r,time:Date.now(),img:thumb(),syms:[...syms],note:String(v.note||"").replace(/[<>&]/g,""),crop:String(v.crop||"").replace(/[<>&]/g,"")};show(lastRes,true)
+}
+$("#anBtn").onclick=analyse;
+function thumb(){const t=document.createElement("canvas");t.width=96;t.height=72;t.getContext("2d").drawImage(cv,0,0,96,72);return t.toDataURL("image/jpeg",.6)}
+const pc=v=>Math.round(v*100)+"%";
+function adviceHTML(k){const d=D[k];return`<p>${d.about}</p><ul class="adv">${d.adv.map(a=>`<li>${a}</li>`).join("")}</ul><div class="src">Source: ${SRC}</div>`}
+function show(o,fresh){
+ const top=o.r[0],d=D[top.k],col=d.sev==="High"?"var(--rd)":d.sev==="Medium"?"var(--am)":"var(--gr)",m=o.m;
+ $("#res").innerHTML=`<h2>Results</h2>
+ <div class="top" style="margin-top:12px"><div class="ring" style="--c:${col}"><span>${pc(top.p)}</span></div>
+ <div><div style="font:800 22px Sora,sans-serif">${d.n}</div><span class="tag sev-${d.sev}">${d.sev==="None"?"No concern":d.sev+" concern"}</span>
+ <div style="color:var(--mut);font-size:13px;margin-top:4px">${top.p<.5?"Low certainty. Retake or tick symptoms.":"Likely match"}</div></div></div>
+ <div class="lbl">Other possibilities (tap for details)</div>
+ ${o.r.slice(1,4).map(c=>`<button class="cand" data-k="${c.k}"><span><b>${D[c.k].n}</b><em>${pc(c.p)}</em></span><div class="bar"><i style="width:${c.p*100}%"></i></div></button>`).join("")}
+ ${o.note?`<p style="color:var(--mut);font-size:13px;margin:10px 0 0">AI vision: ${o.crop&&o.crop!=="unknown"?o.crop+". ":""}${o.note}</p>`:""}<div class="meters"><div><b>${pc(m.g)}</b>healthy leaf colour</div><div><b>${pc(m.y)}</b>yellowing</div><div><b>${pc(m.b+m.d)}</b>brown / dark</div><div><b>${pc(m.w)}</b>white coating</div><div><b>${pc(m.o)}</b>orange</div><div><b>${m.s}</b>spots found</div></div>
+ ${m.tot?`<div class="lbl">Estimated leaf damage: <b style="color:var(--tx)">${area(m)}%</b> (${(STG.find(s=>area(m)<s[1])||STG[3])[0]})</div><div class="sevbar" style="--c:${col}">${STG.map((s,i)=>`<i class="${STG.findIndex(z=>area(m)<z[1])>=i?"on":""}"></i>`).join("")}</div><div class="legend"><span><b style="background:#ff8c1e"></b>orange</span><span><b style="background:#ff3c5a"></b>brown</span><span><b style="background:#c846ff"></b>dark</span><span><b style="background:#50e6ff"></b>white</span></div><div class="row"><button class="ghost" id="ovB">Hide detection map</button></div>`:""}
+ <div class="lbl">Advice <span class="tag">re-scan in ${d.sev==="High"?"2–3":d.sev==="Medium"?"5–7":"10–14"} days</span></div><div id="advTxt">${adviceHTML(top.k)}</div><div class="lbl">Read in your language</div><div class="row" style="margin-top:0"><button class="ghost" data-l="Hindi">हिन्दी</button><button class="ghost" data-l="Marathi">मराठी</button><button class="ghost" id="spB">🔊 Listen</button><button class="ghost" id="dlB">Download</button></div><div class="trans" id="tr">Tap a language to translate this advice.</div>
+ <div class="lbl">Ask a follow-up question</div><div class="row" style="margin-top:0"><input type="search" id="askQ" aria-label="Follow-up question" placeholder="e.g. how soon should I act?" style="margin:0;flex:1;min-width:160px"><button class="ghost" id="askB">Ask</button></div><div class="trans hide" id="askA"></div>
+ <div class="row"><button class="btn" id="saveB">Save to history</button><button class="ghost" id="copyB">Copy report</button><button class="ghost" id="shB">Share</button></div>`;
+ $("#res").onclick=e=>{const c=e.target.closest(".cand");if(c)openDlg(c.dataset.k)};
+ $("#saveB").onclick=()=>{const h=getH();h.unshift({t:o.time,k:top.k,p:top.p,img:o.img,r:o.r.slice(0,4).map(x=>[x.k,x.p]),m:slim(o.m)});setH(h.slice(0,30));toast("Saved to history");$("#saveB").disabled=true};
+ overlay(m);$("#ovB")&&($("#ovB").onclick=e=>{const off=$("#ov").classList.toggle("off");e.target.textContent=off?"Show detection map":"Hide detection map"});
+ $("#ov").classList.remove("off");document.querySelectorAll("[data-l]").forEach(b=>b.onclick=()=>tr(o,b.dataset.l));$("#spB").onclick=speak;
+ const ask=async()=>{const q=$("#askQ").value.trim(),box=$("#askA");if(!q)return;box.classList.remove("hide");box.textContent="Thinking…";
+  try{const sm=await cap("sample");if(!sm)throw{code:"na"};const dd=D[top.k];
+   await sm("You are a careful agronomy assistant for Indian farmers. Screening result: "+dd.n+" ("+pc(top.p)+" confidence), crop: "+(o.crop||crop||"unknown")+", severity "+dd.sev+", damage about "+area(m)+"% of leaf. Use plain, short language, give general advice only, and tell the farmer to confirm with a local agriculture officer before spraying. Question: "+q,{cache:false,modelTier:"quick",onText:({text})=>{box.textContent=text}})}
+  catch(e){box.textContent=e&&e.code==="na"?"AI answers are not available in this view.":e&&e.code==="not_granted"?"Permission was declined.":"Could not get an answer. Please try again."}};
+ $("#askB").onclick=ask;$("#askQ").onkeydown=e=>{if(e.key==="Enter")ask()};
+ $("#dlB").onclick=async()=>{try{const d=await cap("downloads");if(!d)return copy(report(o));await d.save({filename:"agriscan-report.txt",data:new Blob([report(o)],{type:"text/plain"})})}catch(e){}};
+ $("#copyB").onclick=()=>copy(report(o));$("#shB").onclick=()=>{const t=report(o),e=encodeURIComponent(t);$("#shTxt").value=t;$("#shWa").href="https://wa.me/?text="+e;$("#shMail").href="mailto:?subject="+encodeURIComponent("AgriScan report")+"&body="+e;$("#shSms").href="sms:?&body="+e;$("#shDev").classList.toggle("hide",!navigator.share);$("#shDlg").showModal()};
+ if(fresh)$("#res").scrollIntoView({behavior:"smooth",block:"nearest"})
+}
+function report(o){const top=o.r[0],d=D[top.k];return`AgriScan AI report\nLikely: ${d.n} (${pc(top.p)})\nConcern: ${d.sev}\nOther: ${o.r.slice(1,3).map(c=>D[c.k].n+" "+pc(c.p)).join(", ")}\n${o.m&&o.m.tot?'Leaf damage: '+area(o.m)+'%\n':''}Advice:\n- ${d.adv.join("\n- ")}\nSource: ${SRC}`}
+async function copy(t){try{await navigator.clipboard.writeText(t);toast("Report copied")}catch(e){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy");toast("Report copied")}catch(_){toast("Copy not available")}a.remove()}}
+
+/* ---------- library ---------- */
+const libKeys=Object.keys(D).filter(k=>k!=="healthy");
+let sevF="";$("#sevF").innerHTML=["All","High","Medium"].map(v=>`<button class="chip${v==="All"?" on":""}" data-v="${v}">${v==="All"?"All":v+" concern"}</button>`).join("");
+$("#sevF").onclick=e=>{const v=e.target.dataset.v;if(!v)return;sevF=v==="All"?"":v;document.querySelectorAll("#sevF .chip").forEach(b=>b.classList.toggle("on",b.dataset.v===v));renderLib($("#q").value)};
+function renderLib(q=""){const g=$("#libGrid");q=q.toLowerCase();
+ const list=libKeys.filter(k=>(!sevF||D[k].sev===sevF)&&(D[k].n+D[k].about+D[k].sym.join(" ")).toLowerCase().includes(q));
+ g.innerHTML=list.length?list.map(k=>`<button data-k="${k}"><canvas width="240" height="160" data-c="${k}"></canvas><b>${D[k].n}</b><div><span class="tag sev-${D[k].sev}">${D[k].sev} concern</span></div></button>`).join(""):"<p style='color:var(--mut)'>No matches. Try “spots”, “white” or “yellow”.</p>";
+ g.querySelectorAll("canvas").forEach(c=>drawLeaf(c,c.dataset.c,3))}
+$("#q").oninput=e=>renderLib(e.target.value);$("#libGrid").onclick=e=>{const b=e.target.closest("button");if(b)openDlg(b.dataset.k)};
+function openDlg(k){const d=D[k];$("#dlgBody").innerHTML=`<canvas id="dlgC" width="480" height="320" style="width:100%;border-radius:12px;margin-bottom:10px"></canvas><h2>${d.n}</h2><span class="tag sev-${d.sev}">${d.sev==="None"?"No concern":d.sev+" concern"}</span>${d.sym.length?`<div class="lbl">What to look for</div><div>${d.sym.map(s=>`<span class="tag" style="margin:2px">${s}</span>`).join("")}</div>`:""}<div class="lbl">About and advice</div>${adviceHTML(k)}`;drawLeaf($("#dlgC"),k,3);$("#dlg").showModal()}
+$("#dlgClose").onclick=()=>$("#dlg").close();$("#dlg").addEventListener("click",e=>{if(e.target===$("#dlg"))$("#dlg").close()});
+
+/* ---------- history ---------- */
+function getH(){let h;try{h=JSON.parse(localStorage.getItem("agri_h")||"[]")}catch(e){h=window._h||[]}return Array.isArray(h)?h.filter(x=>x&&D[x.k]&&x.m):[]}
+function setH(h){window._h=h;setTimeout(updHud,0);try{localStorage.setItem("agri_h",JSON.stringify(h))}catch(e){}}
+function renderHist(){const h=getH(),el=$("#histList");
+ const pts=h.slice().reverse().map(x=>area(x.m)),mxp=Math.max(10,...pts),sp=pts.length>1?`<div class="card"><b>Damage trend (% of leaf)</b><svg class="spark" viewBox="0 0 300 70" preserveAspectRatio="none"><polyline fill="none" stroke="var(--cy)" stroke-width="3" points="${pts.map((v,i)=>(i/(pts.length-1)*296+2)+","+(66-v/mxp*60)).join(" ")}"/></svg><span class="tag ${pts[pts.length-1]>pts[0]?"sev-High":"sev-None"}">${pts[pts.length-1]>pts[0]?"Getting worse":"Stable or improving"}</span></div>`:"";
+ el.innerHTML=sp+(h.length?h.map((x,i)=>`<button class="hist" data-i="${i}"><img src="${x.img}" alt=""><div><b>${D[x.k].n}</b> <span class="tag">${pc(x.p)}</span><div style="color:var(--mut);font-size:12px">${new Date(x.t).toLocaleString()}</div></div><span data-del="${i}" role="button" aria-label="Delete scan" tabindex="0" style="margin-left:auto;padding:6px 10px">✕</span></button>`).join(""):"<div class='card'>No scans saved yet. Analyse a leaf and tap <b>Save to history</b>.</div>")}
+$("#histList").onclick=e=>{const dl=e.target.closest("[data-del]");if(dl){const h=getH();h.splice(+dl.dataset.del,1);setH(h);renderHist();return}const b=e.target.closest(".hist");if(!b)return;const x=getH()[b.dataset.i];if(!x)return;go("scan");show({m:x.m,r:x.r.map(([k,p])=>({k,p})),time:x.t,img:x.img},false);$("#saveB").disabled=true};
+$("#csvH").onclick=async()=>{const h=getH();if(!h.length){toast("No scans to export");return}
+ const csv="date,diagnosis,confidence,severity,damage_percent\n"+h.map(x=>[new Date(x.t).toISOString(),'"'+D[x.k].n+'"',pc(x.p),D[x.k].sev,area(x.m)].join(",")).join("\n");
+ try{const d=await cap("downloads");if(!d)return copy(csv);await d.save({filename:"agriscan-history.csv",data:new Blob([csv],{type:"text/csv"})})}catch(e){}};
+$("#clrHist").onclick=()=>{setH([]);renderHist();toast("History cleared")};
+
+/* ---------- nav, theme, toast ---------- */
+function go(t){document.querySelectorAll("section").forEach(s=>s.classList.toggle("hide",s.id!=="t-"+t));document.querySelectorAll("#nav [data-tab]").forEach(b=>b.setAttribute("aria-current",b.dataset.tab===t));if(t==="hist")renderHist();if(t==="lib")renderLib($("#q").value);try{history.replaceState(null,"","#"+t)}catch(e){}}
+$("#nav").onclick=e=>{const t=e.target.dataset.tab;if(t)go(t)};
+$("#theme").onclick=()=>{const r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==="dark":!matchMedia("(prefers-color-scheme: light)").matches;r.dataset.theme=dark?"light":"dark"};
+let tt;function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(tt);tt=setTimeout(()=>t.classList.remove("show"),2000)}
+window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(["scan","lib","hist","about"].includes(h))go(h)});
+const h0=location.hash.slice(1);if(["scan","lib","hist","about"].includes(h0))go(h0);
+function updHud(){try{$('#hScans').textContent=getH().length}catch(e){}}
+(function(){
+ const clk=$('#hClk'),tk=()=>{clk.textContent=new Date().toLocaleTimeString([],{hour12:false})};tk();setInterval(tk,1000);
+ const L=Object.keys(D).length-1,el=$('#hLib');let c=0;const iv=setInterval(()=>{c+=Math.max(1,Math.ceil(L/20));if(c>=L){c=L;clearInterval(iv)}el.textContent=c},40);
+ updHud();cap('sample').then(s=>{if(s)$('#hEng').textContent='Vision AI + Colour'});
+ const T='.lib button,.hud>div';
+ document.addEventListener('pointermove',e=>{const b=e.target.closest&&e.target.closest(T);if(!b)return;const r=b.getBoundingClientRect();b.style.setProperty('--ry',((e.clientX-r.left)/r.width-.5)*12+'deg');b.style.setProperty('--rx',-((e.clientY-r.top)/r.height-.5)*12+'deg')},{passive:true});
+ document.addEventListener('pointerout',e=>{const b=e.target.closest&&e.target.closest(T);if(b){b.style.removeProperty('--rx');b.style.removeProperty('--ry')}});
+ const hp=document.querySelector('#t-scan .hero p');
+ if(hp&&!matchMedia('(prefers-reduced-motion: reduce)').matches){const full=hp.textContent;hp.setAttribute('aria-label',full);hp.style.minHeight='3.2em';hp.textContent='';let i=0;const t=setInterval(()=>{hp.textContent=full.slice(0,++i);if(i>=full.length)clearInterval(t)},14)}
+})();
+/* ---------- futuristic effects ---------- */
+(function(){
+ document.addEventListener('pointermove',e=>{const c=e.target.closest&&e.target.closest('.card');if(c){const r=c.getBoundingClientRect();c.style.setProperty('--mx',(e.clientX-r.left)+'px');c.style.setProperty('--my',(e.clientY-r.top)+'px')}},{passive:true});
+ if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+ const c=document.getElementById('fx'),x=c.getContext('2d');let W,H,P=[],col='92,225,230',fr=0;
+ function size(){const d=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;c.width=W*d;c.height=H*d;x.setTransform(d,0,0,d,0,0);const n=Math.min(70,Math.floor(W*H/22000));P=Array.from({length:n},()=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.35,vy:(Math.random()-.5)*.35,r:Math.random()*1.6+.6}))}
+ function hex(){const v=getComputedStyle(document.documentElement).getPropertyValue('--cy').trim();if(/^#[0-9a-f]{6}$/i.test(v))col=[1,3,5].map(i=>parseInt(v.slice(i,i+2),16)).join(',')}
+ function tick(){if(document.hidden){requestAnimationFrame(tick);return}if(fr++%60===0)hex();x.clearRect(0,0,W,H);
+  for(const p of P){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;x.fillStyle='rgba('+col+',.75)';x.shadowColor='rgba('+col+',.9)';x.shadowBlur=8;x.beginPath();x.arc(p.x,p.y,p.r,0,6.283);x.fill()}
+  x.shadowBlur=0;for(let i=0;i<P.length;i++)for(let j=i+1;j<P.length;j++){const dx=P[i].x-P[j].x,dy=P[i].y-P[j].y,d=dx*dx+dy*dy;if(d<14000){x.strokeStyle='rgba('+col+','+(.22*(1-d/14000))+')';x.beginPath();x.moveTo(P[i].x,P[i].y);x.lineTo(P[j].x,P[j].y);x.stroke()}}
+  requestAnimationFrame(tick)}
+ size();addEventListener('resize',size);tick();
+})();
+</script>
+</body>
+</html>
