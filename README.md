@@ -44,15 +44,6 @@ flowchart LR
 2. **Match patterns:** measurements are compared with the typical look of each disease. Crop, ticked symptoms and weather adjust the odds.
 3. **Advise:** short guidance summarised from ICAR, FAO and state agricultural university advisories.
 
-## 🚀 Quick start
-
-No build step and no dependencies. It is one HTML file.
-
-```bash
-git clone https://github.com/Kunalkawale01/agriscan-ai.git
-cd agriscan-ai
-python3 -m http.server 8000
-# open http://localhost:8000
 ```
 ## Result
 <img width="1336" height="602" alt="Screenshot 2026-11-22 162504" src="https://github.com/user-attachments/assets/561f90cc-0b05-4434-bae3-733f35dc1b27" />
