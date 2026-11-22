@@ -49,8 +49,8 @@ flowchart LR
 No build step and no dependencies. It is one HTML file.
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/agriscan-ai.git
-cd agriscan-ai
+[git clone https://github.com/YOUR-USERNAME/agriscan-ai.git
+cd agriscan-ai](https://github.com/Kunalkawale01/agriscan-ai.git)
 python3 -m http.server 8000
 # open http://localhost:8000
 ```
